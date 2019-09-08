@@ -56,4 +56,5 @@ Done.
 * Dataset shuffling
 * Testing
 * Add more layers
+
 All these features requires re-compilation
