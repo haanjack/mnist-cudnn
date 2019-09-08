@@ -36,6 +36,7 @@ train: $(OBJS)
 convolution: convolution.cu
 	$(EXEC) $(NVCC) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ $+
 
+.PHONY: clean
 clean:
 	rm -f ${TARGET} ${OBJ_DIR}/*.o
 
