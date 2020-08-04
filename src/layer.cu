@@ -562,6 +562,8 @@ Conv2D::Conv2D(std::string name,
 	checkCudnnErrors(cudnnSetConvolution2dDescriptor(conv_desc_,
 		padding_, padding_, stride_,  stride_, dilation_,dilation_,
 		CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+
+	d_workspace = nullptr;
 }
 
 Conv2D::~Conv2D()
@@ -578,29 +580,60 @@ void Conv2D::set_workspace()
 {
 	size_t temp_size = 0;
 
+	cudnnConvolutionFwdAlgoPerf_t 		fwd_algo_perf_results[CUDNN_CONVOLUTION_FWD_ALGO_COUNT];
+	cudnnConvolutionBwdFilterAlgoPerf_t 	bwd_filter_algo_perf_results[CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT];
+	cudnnConvolutionBwdDataAlgoPerf_t	bwd_data_algo_perf_results[CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT];
+
 	// forward
+#if CUDNN_MAJOR == 8
+	int algo_max_count;
+	checkCudnnErrors(cudnnGetConvolutionForwardAlgorithmMaxCount(cuda_->cudnn(), &algo_max_count));
+	std::cout << this->name_ << ": Available Algorithm Count [FWD]: " << algo_max_count << std::endl;
+	checkCudnnErrors(cudnnGetConvolutionForwardAlgorithm_v7(cuda_->cudnn(),
+		input_desc_, filter_desc_, conv_desc_, output_desc_,
+		algo_max_count, 0, fwd_algo_perf_results));
+	conv_fwd_algo_ = fwd_algo_perf_results[0].algo;
+#else
 	checkCudnnErrors(cudnnGetConvolutionForwardAlgorithm(cuda_->cudnn(),
 		input_desc_, filter_desc_, conv_desc_, output_desc_,
 		CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &conv_fwd_algo_));
+#endif
 	checkCudnnErrors(cudnnGetConvolutionForwardWorkspaceSize(cuda_->cudnn(),
 		input_desc_, filter_desc_, conv_desc_, output_desc_,
 		conv_fwd_algo_, &temp_size));
 	workspace_size = std::max(workspace_size, temp_size);
 
-	// todo trainable check
 	// bwd - filter
+#if CUDNN_MAJOR == 8
+	checkCudnnErrors(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(cuda_->cudnn(), &algo_max_count));
+	std::cout << this->name_ << ": Available Algorithm Count [BWD-filter]: " << algo_max_count << std::endl;
+	checkCudnnErrors(cudnnGetConvolutionBackwardFilterAlgorithm_v7(cuda_->cudnn(),
+		input_desc_, output_desc_, conv_desc_, filter_desc_,
+		algo_max_count, 0, bwd_filter_algo_perf_results));
+	conv_bwd_filter_algo_ = bwd_filter_algo_perf_results[0].algo;
+#else
 	checkCudnnErrors(cudnnGetConvolutionBackwardFilterAlgorithm(cuda_->cudnn(),
 		input_desc_, output_desc_, conv_desc_, filter_desc_,
 		CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST, 0, &conv_bwd_filter_algo_));
+#endif
 	checkCudnnErrors(cudnnGetConvolutionBackwardFilterWorkspaceSize(cuda_->cudnn(),
 		input_desc_, output_desc_, conv_desc_, filter_desc_,
 		conv_bwd_filter_algo_, &temp_size));
 	workspace_size = std::max(workspace_size, temp_size);
 
 	// bwd - data
+#if CUDNN_MAJOR == 8
+	checkCudnnErrors(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(cuda_->cudnn(), &algo_max_count));
+	std::cout << this->name_ << ": Available Algorithm Count [BWD-data]: " << algo_max_count << std::endl;
+	checkCudnnErrors(cudnnGetConvolutionBackwardDataAlgorithm_v7(cuda_->cudnn(),
+		filter_desc_, output_desc_, conv_desc_, input_desc_,
+		algo_max_count, 0, bwd_data_algo_perf_results));
+	conv_bwd_data_algo_ = bwd_data_algo_perf_results[0].algo;
+#else
 	checkCudnnErrors(cudnnGetConvolutionBackwardDataAlgorithm(cuda_->cudnn(), 
 		filter_desc_, output_desc_, conv_desc_, input_desc_, 
 		CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST, 0, &conv_bwd_data_algo_));
+#endif
 	checkCudnnErrors(cudnnGetConvolutionBackwardDataWorkspaceSize(cuda_->cudnn(),
 		filter_desc_, output_desc_, conv_desc_, input_desc_,
 		conv_bwd_data_algo_, &temp_size));
@@ -827,16 +860,3 @@ Blob<float> *Pooling::backward(Blob<float> *grad_output)
 
 	return grad_input_;
 }
-
-
-/****************************************************************
- * Layer definition                                             *
- ****************************************************************/
-
-	/****************************************************************
- * Layer definition                                             *
- ****************************************************************/
-
-	/****************************************************************
- * Layer definition                                             *
- ****************************************************************/
