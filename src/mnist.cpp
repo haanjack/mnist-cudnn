@@ -166,7 +166,7 @@ void MNIST::get_batch()
     }
 
     // index cliping
-    int data_idx = (step_ * batch_size_) % num_steps_;
+    int data_idx = step_ % num_steps_ * batch_size_;
 
     // prepare data blob
     int data_size = channels_ * width_ * height_;

@@ -14,8 +14,9 @@ int main(int argc, char* argv[])
     int num_steps_train = 2400;
     int monitoring_step = 200;
 
-    double learning_rate = 0.02f;
-    double lr_decay = 0.00005f;
+    double initial_learning_rate = 0.02f;
+    double learning_rate = 0.0;
+    double lr_decay = 0.0005f;
 
     bool load_pretrain = false;
     bool file_save = false;
@@ -75,7 +76,7 @@ int main(int argc, char* argv[])
 
         // update parameter
         // we will use learning rate decay to the learning rate
-        learning_rate *= 1.f / (1.f + lr_decay * step);
+        learning_rate = initial_learning_rate / (1.f + lr_decay * step);
         model.update(learning_rate);
 
         // fetch next data
