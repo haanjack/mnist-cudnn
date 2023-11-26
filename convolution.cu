@@ -111,7 +111,6 @@ int main()
     workspace_size = max(workspace_size, temp_size);
 #if CUDNN_MAJOR == 8
     // convolution (bwd - data)
-    cudnnConvolutionBwdDataAlgo_t conv_bwd_data_algo_;
     cudnnConvolutionBwdDataAlgoPerf_t bwd_data_algo_perf_results[CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT];
     cudnnGetConvolutionBackwardDataAlgorithmMaxCount(cudnn, &algo_max_count);
     std::cout << ": Available Algorithm Count [BWD-data]: " << algo_max_count << std::endl;
