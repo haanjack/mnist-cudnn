@@ -79,17 +79,50 @@ int main()
     size_t workspace_size = 0;
     size_t temp_size = 0;
     float *d_workspace = nullptr;
+#if CUDNN_MAJOR == 8
+    // convolution (fwd)
+    int algo_max_count;
+    cudnnConvolutionFwdAlgoPerf_t fwd_algo_perf_results[CUDNN_CONVOLUTION_FWD_ALGO_COUNT];
+    cudnnGetConvolutionForwardAlgorithmMaxCount(cudnn, &algo_max_count);
+    std::cout << ": Available Algorithm Count [FWD]: " << algo_max_count << std::endl;
+    cudnnGetConvolutionForwardAlgorithm_v7(cudnn,
+                                           input_desc, filter_desc, conv_desc, output_desc,
+                                           algo_max_count, 0, fwd_algo_perf_results);
+    falgo = fwd_algo_perf_results[0].algo;
+#else
     cudnnGetConvolutionForwardAlgorithm(cudnn, input_desc, filter_desc, conv_desc, output_desc, CUDNN_CONVOLUTION_FWD_PREFER_FASTEST, 0, &falgo);
+#endif
     cudnnGetConvolutionForwardWorkspaceSize(cudnn, input_desc, filter_desc, conv_desc, output_desc, falgo, &temp_size);
     workspace_size = max(workspace_size, temp_size);
-
+#if CUDNN_MAJOR == 8
+    // convolution (bwd - filter)
+    cudnnConvolutionBwdFilterAlgoPerf_t bwd_filter_algo_perf_results[CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT];
+    cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(cudnn, &algo_max_count);
+    std::cout << ": Available Algorithm Count [BWD-filter]: " << algo_max_count << std::endl;
+    cudnnGetConvolutionBackwardFilterAlgorithm_v7(cudnn,
+                                                  input_desc, output_desc, conv_desc, filter_desc,
+                                                  algo_max_count, 0, bwd_filter_algo_perf_results);
+    b_falgo = bwd_filter_algo_perf_results[0].algo;
+#else
     // convolution (bwd - filter)
     cudnnGetConvolutionBackwardFilterAlgorithm(cudnn, input_desc, output_desc, conv_desc, filter_desc, CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST, 0, &b_falgo);
+#endif
     cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnn, input_desc, output_desc, conv_desc, filter_desc, b_falgo, &temp_size);
     workspace_size = max(workspace_size, temp_size);
-
+#if CUDNN_MAJOR == 8
+    // convolution (bwd - data)
+    cudnnConvolutionBwdDataAlgo_t conv_bwd_data_algo_;
+    cudnnConvolutionBwdDataAlgoPerf_t bwd_data_algo_perf_results[CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT];
+    cudnnGetConvolutionBackwardDataAlgorithmMaxCount(cudnn, &algo_max_count);
+    std::cout << ": Available Algorithm Count [BWD-data]: " << algo_max_count << std::endl;
+    cudnnGetConvolutionBackwardDataAlgorithm_v7(cudnn,
+                                                filter_desc, output_desc, conv_desc, input_desc,
+                                                algo_max_count, 0, bwd_data_algo_perf_results);
+    b_dalgo = bwd_data_algo_perf_results[0].algo;
+#else
     // convolution (bwd - data)
     cudnnGetConvolutionBackwardDataAlgorithm(cudnn, filter_desc, output_desc, conv_desc, input_desc, CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST, 0, &b_dalgo);
+#endif
     cudnnGetConvolutionBackwardDataWorkspaceSize(cudnn, filter_desc, output_desc, conv_desc, input_desc, b_dalgo, &temp_size);
     workspace_size = max(workspace_size, temp_size);
 
