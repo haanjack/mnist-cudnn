@@ -165,7 +165,7 @@ void MNIST::get_batch()
         exit (-1);
     }
 
-    // index cliping
+    // index clipping
     int data_idx = step_ % num_steps_ * batch_size_;
 
     // prepare data blob
